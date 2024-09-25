@@ -1,12 +1,20 @@
 import { useState, useEffect } from "react";
 import moment from "moment";
-import { Calendar, Video, Info } from "lucide-react";
+import { Video, Info } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import { eventData } from "@/utils/eventData";
 
 const EventDashboard = () => {
   const [currentEvent, setCurrentEvent] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [date, setDate] = useState(new Date());
+  const [selectedDateEvents, setSelectedDateEvents] = useState([]);
 
   useEffect(() => {
     // Find the current or next upcoming event
@@ -40,62 +48,92 @@ const EventDashboard = () => {
     return () => clearInterval(timer);
   }, [currentEvent]);
 
-  const generateCalendar = () => {
-    const today = moment();
-    return Array.from({ length: 30 }, (_, i) => {
-      const day = today.clone().add(i, "days");
-      const eventsOnDay = eventData.events.filter((event) =>
-        moment(event.startTime).isSame(day, "day")
-      );
-      return (
-        <div
-          key={i}
-          className={`text-center p-2 border rounded ${
-            eventsOnDay.length > 0 ? "bg-indigo-100 border-indigo-300" : ""
-          }`}
-        >
-          <div className="font-semibold">{day.format("D")}</div>
-          <div className="text-xs">{day.format("ddd")}</div>
-          {eventsOnDay.length > 0 && (
-            <div className="text-xs mt-1 text-indigo-600">
-              {eventsOnDay.length} event(s)
-            </div>
-          )}
-        </div>
-      );
-    });
+  const isDayWithEvents = (day) => {
+    return eventData.events.some((event) =>
+      moment(event.startTime).isSame(day, "day")
+    );
+  };
+
+  const getEventsForDate = (date) => {
+    return eventData.events.filter((event) =>
+      moment(event.startTime).isSame(date, "day")
+    );
+  };
+
+  const handleDateSelect = (selectedDate) => {
+    setDate(selectedDate);
+    setSelectedDateEvents(getEventsForDate(selectedDate));
   };
 
   return (
     <div className="bg-gray-100 font-sans min-h-screen">
       <div className="container mx-auto p-4">
-        <h1 className="text-3xl font-bold text-center mb-8 text-indigo-600">
-          Event Dashboard
-        </h1>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Calendar Section */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4 text-indigo-600 flex items-center">
-              <Calendar className="mr-2" size={24} />
               Upcoming Events
             </h2>
-            <div className="grid grid-cols-7 gap-2">{generateCalendar()}</div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <div>
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={handleDateSelect}
+                    className="rounded-md border"
+                    modifiers={{ hasEvent: isDayWithEvents }}
+                    modifiersStyles={{
+                      hasEvent: { backgroundColor: "rgb(199 210 254)" },
+                    }}
+                  />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-80">
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg">
+                    Events on {date.toDateString()}
+                  </h3>
+                  {selectedDateEvents.length > 0 ? (
+                    selectedDateEvents.map((event, index) => (
+                      <div key={index} className="border-t pt-2">
+                        <p>
+                          <strong>{event.name}</strong>
+                        </p>
+                        <p>Guests: {event.guests.join(", ")}</p>
+                        <p>
+                          Time: {moment(event.startTime).format("HH:mm")} -{" "}
+                          {moment(event.endTime).format("HH:mm")}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p>No events on this date.</p>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Video Section */}
+
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4 text-indigo-600 flex items-center">
               <Video className="mr-2" size={24} />
               Current Event
             </h2>
-            <div className="aspect-w-16 aspect-h-9">
-              <iframe
-                className="w-full h-full"
+            <div className="relative w-full h-full pb-56.25% overflow-hidden">
+              <video
+                className="top-0 left-0 w-full md:h-[40vh] h-full object-cover rounded-xl"
                 src={eventData.currentEventVideo}
-                title="Event video"
-                allowFullScreen
-              />
+                autoPlay
+                loop
+                // controls
+                controlsList="nodownload noremoteplayback nofullscreen"
+                muted={true} // Unmute by default
+              >
+                Your browser does not support the video tag.
+              </video>
             </div>
           </div>
 
