@@ -8,7 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-import { eventData } from "@/utils/eventData";
+import universityEventsData from "@/utils/universityEventsData";
 
 const EventDashboard = () => {
   const [currentEvent, setCurrentEvent] = useState(null);
@@ -17,13 +17,18 @@ const EventDashboard = () => {
   const [selectedDateEvents, setSelectedDateEvents] = useState([]);
 
   useEffect(() => {
-    // Find the current or next upcoming event
-    const now = moment();
-    const currentOrUpcomingEvent =
-      eventData.events.find((event) => moment(event.endTime).isAfter(now)) ||
-      eventData.events[0];
+    const updateCurrentEvent = () => {
+      const now = moment();
+      const currentOrUpcomingEvent = universityEventsData.events.find(
+        (event) => moment(event.endTime).isAfter(now)
+      ) || universityEventsData.events[0];
+      setCurrentEvent(currentOrUpcomingEvent);
+    };
 
-    setCurrentEvent(currentOrUpcomingEvent);
+    updateCurrentEvent();
+    const interval = setInterval(updateCurrentEvent, 60000); 
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -49,13 +54,13 @@ const EventDashboard = () => {
   }, [currentEvent]);
 
   const isDayWithEvents = (day) => {
-    return eventData.events.some((event) =>
+    return universityEventsData.events.some((event) =>
       moment(event.startTime).isSame(day, "day")
     );
   };
 
   const getEventsForDate = (date) => {
-    return eventData.events.filter((event) =>
+    return universityEventsData.events.filter((event) =>
       moment(event.startTime).isSame(date, "day")
     );
   };
@@ -116,24 +121,30 @@ const EventDashboard = () => {
           </div>
 
           {/* Video Section */}
-
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4 text-indigo-600 flex items-center">
               <Video className="mr-2" size={24} />
               Current Event
             </h2>
             <div className="relative w-full h-full pb-56.25% overflow-hidden">
-              <video
-                className="top-0 left-0 w-full md:h-[40vh] h-full object-cover rounded-xl"
-                src={eventData.currentEventVideo}
-                autoPlay
-                loop
-                // controls
-                controlsList="nodownload noremoteplayback nofullscreen"
-                muted={true} // Unmute by default
-              >
-                Your browser does not support the video tag.
-              </video>
+              {currentEvent ? (
+                <video
+                  className="top-0 left-0 w-full md:h-[40vh] h-full object-cover rounded-xl"
+                  src={currentEvent.videoUrl}
+                  autoPlay
+                  loop
+                  controlsList="nodownload noremoteplayback nofullscreen"
+                  muted={true}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img
+                  src={currentEvent?.fallbackImage || "/placeholder-image.jpg"}
+                  alt="No current event"
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              )}
             </div>
           </div>
 
@@ -146,7 +157,7 @@ const EventDashboard = () => {
             {currentEvent ? (
               <div className="space-y-4">
                 <p>
-                  <strong>Department:</strong> {currentEvent.department}
+                  <strong>Departments:</strong> {currentEvent.departments.join(", ")}
                 </p>
                 <p>
                   <strong>Event Name:</strong> {currentEvent.name}
@@ -155,7 +166,14 @@ const EventDashboard = () => {
                   <strong>Guests:</strong> {currentEvent.guests.join(", ")}
                 </p>
                 <p>
-                  <strong>Duration:</strong> {currentEvent.duration}
+                  <strong>Duration:</strong>{" "}
+                  {moment
+                    .duration(
+                      moment(currentEvent.endTime).diff(moment(currentEvent.startTime))
+                    )
+                    .asHours()
+                    .toFixed(1)}{" "}
+                  hours
                 </p>
                 <div className="mt-6">
                   <p className="mb-2">
@@ -177,7 +195,13 @@ const EventDashboard = () => {
                   </div>
                   <p className="text-sm text-gray-600 mt-2">
                     {Math.floor(moment.duration(progress).asMinutes())} minutes
-                    elapsed out of {currentEvent.duration}
+                    elapsed out of{" "}
+                    {moment
+                      .duration(
+                        moment(currentEvent.endTime).diff(moment(currentEvent.startTime))
+                      )
+                      .asMinutes()}{" "}
+                    minutes
                   </p>
                 </div>
               </div>
